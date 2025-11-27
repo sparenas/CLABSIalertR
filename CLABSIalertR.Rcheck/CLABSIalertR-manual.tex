@@ -1,0 +1,142 @@
+\nonstopmode{}
+\documentclass[a4paper]{book}
+\usepackage[times,inconsolata,hyper]{Rd}
+\usepackage{makeidx}
+\makeatletter\@ifl@t@r\fmtversion{2018/04/01}{}{\usepackage[utf8]{inputenc}}\makeatother
+% \usepackage{graphicx} % @USE GRAPHICX@
+\makeindex{}
+\begin{document}
+\chapter*{}
+\begin{center}
+{\textbf{\huge Package `CLABSIalertR'}}
+\par\bigskip{\large \today}
+\end{center}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdftitle = {CLABSIalertR: What the Package Does (One Line, Title Case)}}}{}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdfauthor = {First Last}}}{}
+\begin{description}
+\raggedright{}
+\item[Title]\AsIs{What the Package Does (One Line, Title Case)}
+\item[Version]\AsIs{0.0.0.9000}
+\item[Description]\AsIs{What the package does (one paragraph).}
+\item[License]\AsIs{MIT + file LICENSE}
+\item[Encoding]\AsIs{UTF-8}
+\item[Roxygen]\AsIs{list(markdown = TRUE)}
+\item[RoxygenNote]\AsIs{7.3.3}
+\item[Imports]\AsIs{ggplot2, stats, dplyr}
+\item[Suggests]\AsIs{knitr, rmarkdown, testthat (>= 3.0.0)}
+\item[Config/testthat/edition]\AsIs{3}
+\item[VignetteBuilder]\AsIs{knitr}
+\item[NeedsCompilation]\AsIs{no}
+\item[Author]\AsIs{First Last [aut, cre]}
+\item[Maintainer]\AsIs{First Last }\email{first.last@example.com}\AsIs{}
+\end{description}
+\Rdcontents{Contents}
+\HeaderA{add\_spc\_rules}{Add SPC rule flags (Western Electric style) to a CLABSI dataset}{add.Rul.spc.Rul.rules}
+%
+\begin{Description}
+Add SPC rule flags (Western Electric style) to a CLABSI dataset
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+add_spc_rules(df, z_col = "z", y_col = "clabsi")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{df}] A data frame that already contains at least:
+\begin{itemize}
+
+\item{} a numeric column \code{z} (z-scores)
+\item{} a numeric column \code{clabsi} (counts)
+
+\end{itemize}
+
+
+\item[\code{z\_col}] Name of the z-score column (default "z")
+
+\item[\code{y\_col}] Name of the response/measurement column (default "clabsi")
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+The same data frame with logical columns:
+rule\_point\_3sigma, rule\_run\_8\_side, rule\_trend\_6, spc\_any
+\end{Value}
+\HeaderA{alert\_poisson\_clabsi}{Create a Poisson-based u-chart table for CLABSI surveillance}{alert.Rul.poisson.Rul.clabsi}
+%
+\begin{Description}
+Computes expected CLABSI counts, Poisson control limits, and alerts.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+alert_poisson_clabsi(data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{data}] Data frame with: month, clabsi, line\_days, and optionally year
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A clean u-chart table
+\end{Value}
+\HeaderA{check\_dispersion}{Check dispersion of CLABSI counts}{check.Rul.dispersion}
+%
+\begin{Description}
+Calculates the variance-to-mean ratio for CLABSI counts to assess
+whether the data follow a Poisson distribution.
+Ratios near 1 suggest Poisson behavior;
+smaller than 1 indicates underdispersion (stable process);
+bigger than 1 suggests overdispersion (extra variability).
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_dispersion(data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{data}] Data frame with a numeric column \code{clabsi}
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Numeric value of the variance-to-mean ratio
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+df <- data.frame(clabsi = c(1,0,0,2,1,3,0,0,1,0,2,4))
+check_dispersion(df)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot\_clabsi\_alerts}{Plot u-chart with dual y-axes (CLABSI counts \& sigma values)}{plot.Rul.clabsi.Rul.alerts}
+%
+\begin{Description}
+Plot u-chart with dual y-axes (CLABSI counts \& sigma values)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_clabsi_alerts(df)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{df}] Data frame from alert\_poisson\_clabsi()
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+ggplot object
+\end{Value}
+\printindex{}
+\end{document}

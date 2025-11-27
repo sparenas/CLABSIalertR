@@ -1,0 +1,446 @@
+---
+title: "Introduction to CLABSIalertR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{intro-to-CLABSIalertR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+   fig.align = "center"
+)
+
+```
+# Introduction
+
+  This vignette provides a practical, step‑by‑step guide to using CLABSIalertR, an R package designed for Infection Preventionists (IPs) to monitor central line–associated bloodstream infections (CLABSIs) using Poisson-based u‑charts and statistical process control (SPC) rules.
+  
+  The goal is to help IPs:
+
+* Detect outbreaks early,
+
+* Recognize sustained process changes,
+
+* Identify gradual deterioration or improvement,and 
+
+* Complement, not replace, NHSN SIR reporting.
+
+This vignette assumes strong clinical expertise and moderate statistical literacy, but no advanced R or SPC background.
+
+#### You can install the package from CRAN using:
+```{r set up}
+#load the package
+
+library(CLABSIalertR)
+library(ggplot2)
+
+
+```
+
+# Background
+  Most infection Preventionists (IPs) rely on the National Health Safety Network (NHSN) data to interpret their central line-associated bloodstream infection (CLABSI) data. NHSN provides a way to compare healthcare facilities' CLABSI rates to other facilities of the same type (a risk-adjusted national benchmark). For example, one can compare one cancer-specialty hospital in Miami to another cancer-specialty hospital in Tampa with similar amount of patient beds. It does this by using the Standardized Infection Ratio (SIR), which indicates whether the infection rate is over or below the predicted national rate for the type of hospital you work in.
+  
+ So SIR is excellent for benchmarking against national rates, but it is:
+
+* retrospective,
+
+* aggregated over long periods,
+
+* not optimized for month-to-month, real-time detection. 
+ 
+In contrast, CLABSIalertR:
+
+* uses facility-specific baselines,
+
+* models CLABSI counts with a Poisson process,
+
+* accounts for changing line-days (exposure), and
+
+* applies a small set of SPC rules (Rules 1, 2, and 5) that are appropriate for Poisson count data.
+
+ You can think of it as a local early-warning system that lives alongside NHSN. Therefore this vignette serves as the primary long-form guide for users, offering a workflow from installation through interpretation of SPCs. The assessment is structured around the needs and background of IP professionals with strong clinical expertise and moderate statistical literacy, but who may not be advanced R programmers or statisticians
+
+
+
+# Overview of workflow
+
+This vignette shows how to:
+
+1. Prepare your CLABSI data set
+
+2. Establish phase I (baseline/stable period) with 20–25 stable points
+
+3. Check dispersion of phase I [via check_dispersion()]
+
+4. Understand how to act on under‑ or over‑dispersion
+
+5. Fit the Poisson u‑chart model [via alert_poisson_clabsi()]
+
+6. Plot and interpret your CLABSI chart [via plot_clabsi_alerts()]
+
+7. Interpret SPC rules (Rules 1, 2, and 5) via add_spc_rules()
+
+This document avoids mathematical overload and focuses on practical, real-world use for Infection Prevention.
+
+---------
+
+# Required data structure
+
+* Required columns:
+
+  * clabsi: number of CLABSI events per month
+  * line_days: number of central line days per month
+  * month: intergers 1-12
+  * year: calendar year (e.g., 2024:2025)
+  
+# Running the core functions
+
+## 1. check_dispersion(): 
+  
+  Uses the standard variance-to-mean 
+dispersion ratio. Establish dispersion (clabsi variance/clabsi mean):
+
+#### 1. Phase I:
+  Pick stable period with ~20-25 months to check dispersion, as with fewer points (e.g.,6-10), the variance/mean ratio is less reliable.
+  
+  Users must manually identify the historically stable period. The package does not identify Phase I automatically. IPs must manually choose a time period that they believe is “typical” and free of major outbreaks or large process changes
+  
+#### 2. Phase II (ongoing monitoring)
+  * this phase should look more dispersed if real shifts occur
+  * Over-dispersion is the signal you want, not a model failure
+
+### How to interpret dispersion:
+
+  * Thresholds for dispersion:
+     * < 0.8 → under-dispersion
+     * 0.8–1.2 → dispersion consistent with Poisson
+     * > 1.2 → over-dispersion
+     
+#### A. Dispersion consitent with Poisson
+  Stable phase I has been established. Proceed with data analysis
+
+#### B. Under-dispersion in phase I:
+  Means your process varies less than expected for a Poisson model. Poisson limits are wider than needed and fewer false alarms are raised. It is safe to keep using the Poisson limits without modification.
+
+#### C. Over-dispersion in phase I:
+  More variability than Poisson would predict. Can come from:
+  
+  * mixing different units/populations/time periods in one chart,   * real changes in risk over the “Phase I” period,
+  * seasonality, reporting changes, or obvious outbreaks sitting inside the baseline window.
+  
+### How to manage overdispersion in phase I: 
+  
+#### Step 1: Find source
+  * Clean up data by looking into the source of over-dispersion (e.g., remove prior outbreak from stable period).
+  
+#### Step 2: Mild dispersion persists
+  * If the dispersion ratio is between 1.2 and 2.0, the process shows extra variability. Control-chart limits can still be used, but rule violations may occur more often than the nominal ‘3-sigma’ (3-SD) probabilities suggest. Investigate persistent patterns rather than a single isolated signal.
+  
+#### Step 3: High over-dispersion ratio >>2
+ *  If the dispersion ratio is much greater than 2, do not treat the process as a single Poisson stream. Re-define the baseline (e.g., remove known outbreak periods, or split by unit) until the ratio is closer to 1 before setting limits.
+  
+  * Consider more advanced charts (EWMA, CUSUM, or likelihood-based charts) if they have local statistical support; Scagliarini et al. show several EWMA alternatives for exactly this context.
+  
+  Once monitoring begins, extra dispersion usually reflects true changes in risk rather than a problem with the model.
+
+## 2. alert_poisson_clabsi():
+
+  Returns a data frame of 9 rows and 12 columns that include the items added by the user (CLABSIs, year, month, and line_days), and those calculated by the package: upper control limit (UCL), lower control limit (LCL), alerts, and expected number of CLABSIs per month (λ). 
+
+## 3. add_spc_rule():
+
+  Uses statistical process control rules to monitor  and distinguish between normal and random variation. Here we use 3 rules that apply to CLABSIs and IPs: We adopt rules 1, 2, and 5 from the standard eight-rule set because they provide high sensitivity to outbreaks in the Poisson rate context. The rules are: #1. point beyond 3-SDs, #2. shift of 8+ points on one side of the center line (baseline or u_bar for the entire period), and #5. trend of 6 or more points.
+  
+### Rule #1 
+  Points to a sudden unusual spike since a point above 3-SDs would be rare just by chance. For our example from "clabsi_data' below, the chances of going above 5 CLABSIs is 0.74% for month #1. The table generated presents this as surpassing 4.43 CLABSIs (upper limit count) for the same month. This is calculated from the poisson tail. In Poisson u-charts, this probability changes month to month because λ changes.
+  
+  Month #1 = P(|Z| > 3) ≈ 0.0074
+
+  Rules #2 an #5 are probabilities are constants because they assume only the direction of points (above/below or up/down), not the magnitude. They do not depend on λ, line days, or Poisson distribution. They depend only on independence of successive months.
+  
+### Rule #2:
+  Detects “process change”, a new baseline is forming starting with 8 points. So the probability that 8 consecutive points fall on the same side is:
+
+𝑃=(0.5)^7=0.0078
+
+### Rule #5 
+  Detects a 6-point consistent, directional change, gradual worsening or improvement, even if individual points are within limits.
+
+P=(0.5)^5=1/32=0.03125
+  
+## 4. plot_clabsi_alerts():
+
+  Plots the u-control chart for alert_poisson_clabsi () and add_spc_rule ().
+
+   * solid black line = observed CLABSI
+   * dotted blue line = centerline (baseline for entire period entered)
+   * dashed red line = UCL
+   * orange dot-dash = LCL
+   * colored points = SPC rule violations
+  
+## Example of steps needed
+
+```{r}
+# 1. Load the library
+library(CLABSIalertR)
+
+#2. Create/load the data frame:
+  
+    clabsi_data <- data.frame(
+      year= rep(2024:2025, each=12), 
+      month = rep(1:12, times=2),
+      clabsi = c(1,2,0,2,0,3,2,2,4,0,2,3,1,0,1,2,1,0,3,4,3,3,5,6),
+      line_days = c(3200,3100,3300,3150,3180,3000,3250,3100,3200,3050,3100,3150, 3200,3100,3300,3150,3180,3000,3250,3100,3200,3050,3100,3150)
+      )
+clabsi_data
+
+
+# 3. Establish phase I (stable period/baseline): 
+phase1<- subset(clabsi_data,
+year==2024|(year==2025&month<=6)
+)
+
+phase1
+
+# 4. Check dispersion
+
+check_dispersion(phase1) #0.8–1.2: consistent with Poisson
+
+# 5. use alert_poisson_clabsi()
+  #computes the Poisson u-chart quantities
+
+result <- alert_poisson_clabsi(clabsi_data)
+result
+
+# 6. use add_spc_rules()
+add_spc_rules(result)
+
+
+# 7. plot
+
+plot_clabsi_alerts(result)
+
+
+```
+    
+
+
+# Theory
+
+### Poisson distribution is used when the probability of events are low.
+
+#### Sum of total CLABSI/sum of total line days = u_bar
+  
+#### u_bar * line days per month = (λ) or expected
+
+For example, in month #1 from 'clabsi_data': 
+ 
+* 3200 line_days * u_bar = 1.17 CLABSIs expected ((λ). 
+ 
+From the Poisson tail (3-SDs), the UCL is 4.43 CLABSIs.
+
+* The probability of going over 5 CLABSIs (UCL) is 0.74%. 
+  
+#### Month #1 = P(|Z| > 3) ≈ 0.0074
+  
+* The upper limit and lower limit rates are calculated with the following formula: 
+  
+#### UCL and LCL (rate-month) = u_bar +/- 3 * [u_bar/line days (month)]^1/2  
+
+* The upper and lower limit counts are calculated as follows:
+
+#### UCL (count-month) = UCL (rate-month) * line_days (month) 
+#### LCL (count-month) = LCL (rate-month) * line days (month) 
+
+This is why each month’s limit changes with line-days. Different exposure = Different precision. 
+
+### SPC rules
+
+If the process is stable and each point behaves independently and symmetrically around the centerline, then:
+
+*  Rule 1 (beyond 3-SD) is rare
+
+*  Rule 2 (8 on one side) and Rule 5 (6-point trend) are also low-probability events
+
+In practice, we use these rules as signals to investigate, not as simple hypothesis tests. When a rule triggers, the question is: Is there a plausible clinical or system explanation for this pattern?
+
+
+### SPC Rules used in Examples
+#### Example 1 and 5:
+  * Stable process/no alerts 
+
+#### Example 2:
+  * Beyond 3-SD or UCL
+  * P(∣Z∣>3)≈P(CLABSI≥UCL_count)
+    * < 1% probability (P)
+  * A sudden large shift in process that  
+    requires investigation.
+  * Possible outbreak
+    
+#### Example 3:
+  * Rule 5 and Rule 1:
+  * P(6-point trend)=2/5^2=0.03125
+  * 6-point shift toward a point beyond UCL (3-SDs)
+
+#### Example 4:
+  * Prominent shift: 8 consecutive points on either side of the centerline
+  * P(8 points on same side)=(0.5)^7=0.0078
+
+```{r}
+
+#example 1 stable process/no alerts triggered (from introduction)
+
+#creating dataset
+   df <- data.frame(
+     year=rep(2022:2024,each=12),
+      month = rep(1:12, times=3),
+      clabsi = c(2,0,1,2,4,4,2,5,3,1,2,3,0,2,2,5,2,3,1,5,4,3,2,0,1,4,3,5,2,3,0,2,4,4,3,2),
+      line_days = c(3200,3100,3300,3150,3180,3000,3250,3100,3200,3050,3100,3150,3200,3100,3300,3150,3180,3000,3250,3100,3200,3050,3100,3150,3200,3100,3300,3150,3180,3000,3250,3100,3200,3050,3100,3150)
+      )
+#checking dispersion of stable period: 24 months between 2022:2023
+phase1<-subset(df, year%in%2022:2023)
+check_dispersion(phase1)
+
+resultx<-alert_poisson_clabsi(df)
+add_spc_rules(resultx)
+plot_clabsi_alerts(resultx)
+
+
+# Example 2: 
+#Rule 1: point beyond 3-sigma ---------------------------
+
+#creating dataset
+outbreak_df <- data.frame(
+  year=rep(2023:2024, each=12),
+  month=rep(1:12, times =2),
+  clabsi =c(
+  1, 0, 2, 1, 
+  1, 2,0, 1, 
+  2, 1, 0, 1, 
+  1, 2, 1, 0, 
+  2, 1, 6, 7, 
+  5, 4, 1, 2),
+line_days =c(
+  3100, 3200, 3150, 3180, 3220, 3190,
+  3250, 3170, 3210, 3200, 3180, 3230,
+  3300, 3290, 3320, 3340, 3310, 3350,
+  3400, 3420, 3390, 3370, 3330, 3320)
+)
+
+#test dispersion of stable period (18 months between 2023 and 2024)
+phase1 <- subset(df, (year == 2023) | (year == 2024 & month <= 6))
+check_dispersion(phase1)
+
+result<-alert_poisson_clabsi(outbreak_df)
+add_spc_rules(result)
+plot_clabsi_alerts(result)
+
+
+#example 3: --------------------------------------
+#Rules 1 and 5 (slow shift towards outbreak)
+#Points shifting upwards and beyond the 3-SD line or UCL.
+
+set.seed(123)
+
+#setting up data
+years=rep(2023:2024,each=12)
+line_days= round(rnorm(24,3800,sd=150))
+clabsi_stable<-rpois(24,2.5)
+clabsi_stable[19:24]<-c(5,6,7,9,11,10) #creating instability)
+
+#create data frame
+df<-data.frame(
+  month=1:12,times=2,
+  year=years,
+  clabsi=clabsi_stable,
+  line_days=line_days
+)
+#testing dispersion of 18 months (stable period) prior to spike
+
+phase1 <- subset(df, (year == 2023) | (year == 2024 & month <= 6))
+check_dispersion(phase1)
+
+result<-alert_poisson_clabsi(df)
+add_spc_rules(result)
+plot_clabsi_alerts(result)
+
+
+#example 4-----------------------------------------------------------------
+# Rule 2: 8-point shift
+# shows improvement or degradation such as a new practice implementation
+
+#creating data set
+set.seed(123)
+years=rep(2023:2025, each=12)
+clabsi8=rpois(36,3)
+line_days=round(rnorm(36,4500,100)) 
+clabsi8[27:35]<-c(6,7,7,6,8,6,7,7,8)
+
+#building data frame
+df1=data.frame(
+  month=1:12,times=3,
+  clabsi=clabsi8,
+  line_days=line_days,
+  year=years
+)
+
+#checking dispersion of 24 months prior to spike
+phase1<-subset(df1, year<=2023:2024)
+check_dispersion(phase1)
+
+result2<-alert_poisson_clabsi(df1)
+add_spc_rules(result2)
+plot_clabsi_alerts(result2)
+
+
+#example 5----------------------------------------------------------
+#stable system, not alerts triggered
+
+#creating data set
+set.seed(122)
+years=rep(2024:2026,each=12)
+clabsi4=rpois(36, 2)
+line_days=rnorm(36,3000,150)
+
+#building data frame
+df2<-data.frame(
+  month=rep(1:12, times=3),
+  year=years,
+  clabsi=clabsi4,
+  line_days=line_days
+)
+
+#checking dispersion of first 24 months
+phase1<-subset(df2, year<=2024:2025)
+check_dispersion(phase1)
+
+result3<-alert_poisson_clabsi(df2)
+add_spc_rules(result3)
+plot_clabsi_alerts(result3)
+
+
+
+```
+
+## Interpretation Guidance
+* Use Rule 1 to detect sudden spikes requiring urgent investigation.
+
+* Use Rule 2 to detect degradation or improvements in practice.
+
+* Use Rule 5 to identify emerging trends before they cross control limits.
+
+## Assumptions and Limitations
+* Events must be rare relative to line days
+  * Refer back to theory for additional information
+
+* Month-to-month data should be comparable
+
+
+* Extreme overdispersion (dispersion ratio > 2) suggests model misfit
+
+* Does not replace NHSN SIR, but complements it.
+
