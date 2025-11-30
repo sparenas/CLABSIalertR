@@ -176,7 +176,7 @@ P=(0.5)^5=1/32=0.03125
 
   Plots the u-control chart for alert_poisson_clabsi () and add_spc_rule ().
 
-   * solid black line = observed CLABSI
+   * black-shaped circles = observed CLABSI
    * dotted blue line = centerline (baseline for entire period entered)
    * dashed red line = UCL
    * orange dot-dash = LCL
@@ -270,25 +270,9 @@ In practice, we use these rules as signals to investigate, not as simple hypothe
 
 
 ### SPC Rules used in Examples
-#### Example 1 and 5:
+#### Example 1 and 2:
   * Stable process/no alerts 
 
-#### Example 2:
-  * Beyond 3-SD or UCL
-  * P(∣Z∣>3)≈P(CLABSI≥UCL_count)
-    * < 1% probability (P)
-  * A sudden large shift in process that  
-    requires investigation.
-  * Possible outbreak
-    
-#### Example 3:
-  * Rule 5 and Rule 1:
-  * P(6-point trend)=2/5^2=0.03125
-  * 6-point shift toward a point beyond UCL (3-SDs)
-
-#### Example 4:
-  * Prominent shift: 8 consecutive points on either side of the centerline
-  * P(8 points on same side)=(0.5)^7=0.0078
 
 ```{r}
 
@@ -309,9 +293,40 @@ resultx<-alert_poisson_clabsi(df)
 add_spc_rules(resultx)
 plot_clabsi_alerts(resultx)
 
+#example 2----------------------------------------------------------
+#stable system, not alerts triggered
 
-# Example 2: 
-#Rule 1: point beyond 3-sigma ---------------------------
+#creating data set
+set.seed(122)
+years=rep(2024:2026,each=12)
+clabsi4=rpois(36, 2)
+line_days=rnorm(36,3000,150)
+
+#building data frame
+df2<-data.frame(
+  month=rep(1:12, times=3),
+  year=years,
+  clabsi=clabsi4,
+  line_days=line_days
+)
+
+#checking dispersion of first 24 months
+phase1<-subset(df2, year<=2024:2025)
+check_dispersion(phase1)
+
+result3<-alert_poisson_clabsi(df2)
+add_spc_rules(result3)
+plot_clabsi_alerts(result3)
+```
+#### Example 3:
+  * Beyond 3-SD or UCL
+  * P(∣Z∣>3)≈P(CLABSI≥UCL_count)
+    * < 1% probability (P)
+  * A sudden large shift in process that  
+    requires investigation.
+  * Possible outbreak
+  
+```{r}
 
 #creating dataset
 outbreak_df <- data.frame(
@@ -339,8 +354,16 @@ result<-alert_poisson_clabsi(outbreak_df)
 add_spc_rules(result)
 plot_clabsi_alerts(result)
 
+```
 
-#example 3: --------------------------------------
+
+#### Example 4:
+  * Rule 5 and Rule 1:
+  * P(6-point trend)=2/5^2=0.03125
+  * 6-point shift toward a point beyond UCL (3-SDs)
+```{r}
+
+
 #Rules 1 and 5 (slow shift towards outbreak)
 #Points shifting upwards and beyond the 3-SD line or UCL.
 
@@ -368,10 +391,11 @@ result<-alert_poisson_clabsi(df)
 add_spc_rules(result)
 plot_clabsi_alerts(result)
 
-
-#example 4-----------------------------------------------------------------
-# Rule 2: 8-point shift
-# shows improvement or degradation such as a new practice implementation
+```
+#### Example 4:
+  * Prominent shift: 8 consecutive points on either side of the centerline
+  * P(8 points on same side)=(0.5)^7=0.0078
+```{r}
 
 #creating data set
 set.seed(123)
@@ -395,34 +419,6 @@ check_dispersion(phase1)
 result2<-alert_poisson_clabsi(df1)
 add_spc_rules(result2)
 plot_clabsi_alerts(result2)
-
-
-#example 5----------------------------------------------------------
-#stable system, not alerts triggered
-
-#creating data set
-set.seed(122)
-years=rep(2024:2026,each=12)
-clabsi4=rpois(36, 2)
-line_days=rnorm(36,3000,150)
-
-#building data frame
-df2<-data.frame(
-  month=rep(1:12, times=3),
-  year=years,
-  clabsi=clabsi4,
-  line_days=line_days
-)
-
-#checking dispersion of first 24 months
-phase1<-subset(df2, year<=2024:2025)
-check_dispersion(phase1)
-
-result3<-alert_poisson_clabsi(df2)
-add_spc_rules(result3)
-plot_clabsi_alerts(result3)
-
-
 
 ```
 
