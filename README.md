@@ -5,7 +5,7 @@ https://github.com/sparenas/CLABSIalertR
 
 To install the package from GitHub, run in an R session:
 
-# install.packages("devtools")   # if devtools is not installed
+### install.packages("devtools")   ### if devtools is not installed
 devtools::install_github("sparenas/CLABSIalertR")
 library(CLABSIalertR)
 
