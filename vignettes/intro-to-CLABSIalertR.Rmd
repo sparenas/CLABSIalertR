@@ -181,7 +181,8 @@ P=(0.5)^5=1/32=0.03125
    * dashed red line = UCL
    * orange dot-dash = LCL
    * red dot = point above 3 standard deviations
-   * purple dot = 
+   * purple dot = 6-point trend
+   * green triangle = 8-point shift
   
 ## Example of steps needed
 
