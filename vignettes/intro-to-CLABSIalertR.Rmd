@@ -180,7 +180,8 @@ P=(0.5)^5=1/32=0.03125
    * dotted blue line = centerline (baseline for entire period entered)
    * dashed red line = UCL
    * orange dot-dash = LCL
-   * colored points = SPC rule violations
+   * red dot = point above 3 standard deviations
+   * purple dot = 
   
 ## Example of steps needed
 
